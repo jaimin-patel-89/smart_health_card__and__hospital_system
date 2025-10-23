@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patient Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" crossorigin="anonymous" />
+
+  <style>
+    body { font-family: 'Inter', sans-serif; background-color: #f7f9fc; }
+    .dashboard-card { cursor: pointer; transition: all 0.3s ease; transform-style: preserve-3d; box-shadow: 0 10px 30px rgba(100, 100, 100, 0.1); }
+    .dashboard-card:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 15px 40px rgba(100, 100, 100, 0.15); }
+    .content-area { background-color: white; border: 1px solid #e0e7ff; min-height: 200px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05); animation: fadeIn 0.4s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .primary-button { background: linear-gradient(135deg, #4f46e5, #6366f1); transition: all 0.3s ease; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3); }
+    .primary-button:hover { background: linear-gradient(135deg, #4338ca, #4f46e5); box-shadow: 0 6px 15px rgba(79, 70, 229, 0.4); transform: translateY(-1px); }
+  </style>
+
+  <script>
+    const backendURL = "http://localhost:5000"; // your backend base URL
+
+    // Fetch payments from backend instead of local placeholder
+    async function fetchPayments() {
+      try {
+        const response = await fetch(`${backendURL}/payment`);
+        if (!response.ok) throw new Error("Failed to fetch payments");
+        const payments = await response.json();
+        return payments;
+      } catch (err) {
+        console.error(err);
+        return [];
+      }
+    }
+
+
+// Patient.html - Update fetchVisitHistory
+
+// Make sure you have the ID available (e.g., from local storage or a global variable)
+const currentPatientId = localStorage.getItem('user_id'); 
+
+
+async function fetchVisitHistory() {
+  try {
+    // Change the endpoint to include the ID
+    const response = await fetch(`${backendURL}/visit/${currentPatientId}`); 
+    
+    if (!response.ok) throw new Error("Failed to fetch visits");
+    
+    const visits = await response.json();
+    return visits;
+    
+  } catch (err) {
+    console.error(err);
+    return [];
+  }
+}
+
+
+
+
+    // UI Helper
+    const createEl = (tag, classes = [], content = '') => {
+      const el = document.createElement(tag);
+      if (classes.length) el.className = classes.join(' ');
+      if (content) el.innerHTML = content;
+      return el;
+    };
+
+    const renderContent = (title, htmlContent) => {
+      const contentDisplay = document.getElementById('content-display');
+      contentDisplay.innerHTML = '';
+
+      const header = createEl('div', ['pb-4', 'border-b', 'border-indigo-100', 'mb-6']);
+      header.appendChild(createEl('h2', ['text-3xl', 'font-extrabold', 'text-gray-800'], title));
+
+      const wrapper = createEl('div', ['p-4', 'sm:p-8']);
+      wrapper.appendChild(header);
+      wrapper.appendChild(createEl('div', ['space-y-6', 'text-gray-700'], htmlContent));
+
+      contentDisplay.appendChild(wrapper);
+    };
+
+    // --- 1. Payments Section ---
+    async function generatePaymentsContent() {
+      const payments = await fetchPayments();
+      if (!payments.length) {
+        return `<p class="text-gray-600 text-center py-8">No payment records found.</p>`;
+      }
+
+      const paymentsHtml = payments.map(p => `
+        <div class="bg-indigo-50 p-5 rounded-xl shadow-lg flex flex-col sm:flex-row justify-between items-start sm:items-center border border-indigo-200">
+          <div class="mb-3 sm:mb-0">
+            <p class="text-lg font-semibold text-indigo-700">User ID: ${p.id}</p>
+            <p class="text-sm text-gray-600">${p.method}</p>
+          </div>
+          <div class="text-right">
+            <p class="text-2xl font-bold text-gray-800">$${p.amount}</p>
+            <p class="text-xs text-gray-500">Paid on: ${new Date(p.date).toLocaleDateString('en-GB')}</p>
+          </div>
+        </div>
+      `).join('');
+
+      return `<div class="space-y-4">${paymentsHtml}</div>`;
+    }
+
+    // --- 2. History Section ---
+    async function generateHistoryContent() {
+      const visits = await fetchVisitHistory();
+      if (!visits.length) {
+        return `<p class="text-gray-600 text-center py-8">No visit history found.</p>`;
+      }
+
+      const historyList = visits.map(v => `
+        <div class="p-4 border-l-4 border-green-500 bg-green-50 rounded-lg shadow-sm">
+          <p class="text-xl font-bold text-green-700">${v.purpose}</p>
+          <p class="text-sm text-gray-500 mt-1">Date: ${new Date(v.visit_date).toLocaleDateString()}</p>
+          <p class="mt-2 text-gray-700">User ID: ${v.user_id}</p>
+        </div>
+      `).join('');
+
+      return `<div class="space-y-4">${historyList}</div>`;
+    }
+
+    // --- 3. Static Sections (Insurance, Services, Analytics) ---
+    const generateInsuranceContent = () => `
+      <div class="bg-white p-6 rounded-xl shadow-xl border border-blue-200 space-y-2">
+        <div class="flex justify-between border-b py-2"><span class="text-gray-500 font-medium">Provider</span><span class="font-semibold text-blue-700">HealthTrust Global</span></div>
+        <div class="flex justify-between border-b py-2"><span class="text-gray-500 font-medium">Policy Number</span><span class="font-semibold text-gray-800">HTG-987654-XYZ</span></div>
+        <div class="flex justify-between border-b py-2"><span class="text-gray-500 font-medium">Coverage</span><span class="font-semibold text-green-600">Premium PPO</span></div>
+        <div class="flex justify-between border-b py-2"><span class="text-gray-500 font-medium">Deductible</span><span class="font-semibold text-gray-800">$500</span></div>
+        <div class="flex justify-between py-2"><span class="text-gray-500 font-medium">Status</span><span class="font-semibold text-green-500">Active</span></div>
+      </div>
+      <div class="mt-6 text-center">
+        <button id="claim-insurance-btn" class="primary-button text-white font-bold py-3 px-8 rounded-full"><i class="fas fa-hand-holding-usd mr-2"></i>Claim Insurance</button>
+      </div>
+    `;
+
+    const generateServicesContent = () => `
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <button onclick="alert('Redirecting to Home Blood Test')" class="p-6 bg-white rounded-2xl shadow-lg border border-teal-200 hover:bg-teal-50"><i class="fas fa-vial text-4xl text-teal-600 mb-3"></i><span class="font-bold text-lg text-gray-700">Home Blood Test</span></button>
+        <button onclick="alert('Redirecting to Medicine Delivery')" class="p-6 bg-white rounded-2xl shadow-lg border border-teal-200 hover:bg-teal-50"><i class="fas fa-truck-moving text-4xl text-teal-600 mb-3"></i><span class="font-bold text-lg text-gray-700">Medicine Delivery</span></button>
+        <button onclick="alert('Redirecting to Home Nurse')" class="p-6 bg-white rounded-2xl shadow-lg border border-teal-200 hover:bg-teal-50"><i class="fas fa-user-nurse text-4xl text-teal-600 mb-3"></i><span class="font-bold text-lg text-gray-700">Home Nurse Needed</span></button>
+      </div>
+    `;
+
+    const generateAnalyticsContent = () => `
+      <div class="text-center p-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300">
+        <i class="fas fa-brain text-6xl text-indigo-400 mb-4"></i>
+        <h3 class="text-2xl font-bold text-gray-800">Advanced Analytics Hub</h3>
+        <p class="mt-4 text-xl text-gray-600">AI insights coming soon.</p>
+      </div>
+    `;
+
+    // --- Event Binding ---
+    const attachListeners = () => {
+      const contentMap = {
+        'payments': { title: 'Your Past Payments', generator: generatePaymentsContent },
+        'insurance': { title: 'Health Insurance Details', generator: generateInsuranceContent },
+        'services': { title: 'Online Services Hub', generator: generateServicesContent },
+        'history': { title: 'Clinical History Timeline', generator: generateHistoryContent },
+        'analytics': { title: 'Advanced Health Analytics', generator: generateAnalyticsContent },
+      };
+
+      Object.keys(contentMap).forEach(key => {
+        document.getElementById(`card-${key}`).addEventListener('click', async () => {
+          setActiveCard(`card-${key}`);
+          const { title, generator } = contentMap[key];
+          const htmlContent = await generator();
+          renderContent(title, htmlContent);
+        });
+      });
+    };
+
+    const setActiveCard = (clickedId) => {
+      document.querySelectorAll('.dashboard-card').forEach(card => {
+        card.classList.remove('ring-4', 'ring-indigo-300', 'bg-white');
+        card.classList.add('bg-indigo-50');
+      });
+      const clickedCard = document.getElementById(clickedId);
+      clickedCard.classList.remove('bg-indigo-50');
+      clickedCard.classList.add('ring-4', 'ring-indigo-300', 'bg-white');
+    };
+
+    window.onload = () => {
+      attachListeners();
+      document.getElementById('card-payments').click();
+      document.getElementById('content-display').classList.remove('hidden');
+    };
+  </script>
+</head>
+
+<body class="p-4 sm:p-8 min-h-screen">
+  <div class="max-w-7xl mx-auto">
+    <header class="mb-10 text-center">
+      <h1 class="text-5xl font-extrabold text-gray-900"><i class="fas fa-user-circle text-indigo-500 mr-2"></i>Patient Dashboard</h1>
+      <p class="mt-2 text-xl text-indigo-600">Your Health, Your Control.</p>
+    </header>
+
+    <section id="dashboard-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-10">
+      <div id="card-payments" class="dashboard-card bg-indigo-50 p-6 rounded-2xl text-center text-indigo-800 hover:bg-indigo-100"><i class="fas fa-file-invoice-dollar text-4xl mb-3"></i><h3 class="text-xl font-bold">1. View Your Payments</h3></div>
+      <div id="card-insurance" class="dashboard-card bg-indigo-50 p-6 rounded-2xl text-center text-indigo-800 hover:bg-indigo-100"><i class="fas fa-shield-alt text-4xl mb-3"></i><h3 class="text-xl font-bold">2. Health Insurance</h3></div>
+      <div id="card-services" class="dashboard-card bg-indigo-50 p-6 rounded-2xl text-center text-indigo-800 hover:bg-indigo-100"><i class="fas fa-laptop-medical text-4xl mb-3"></i><h3 class="text-xl font-bold">3. Online Services</h3></div>
+      <div id="card-history" class="dashboard-card bg-indigo-50 p-6 rounded-2xl text-center text-indigo-800 hover:bg-indigo-100"><i class="fas fa-chart-line text-4xl mb-3"></i><h3 class="text-xl font-bold">4. Your History</h3></div>
+      <div id="card-analytics" class="dashboard-card bg-indigo-50 p-6 rounded-2xl text-center text-indigo-800 hover:bg-indigo-100"><i class="fas fa-lightbulb text-4xl mb-3"></i><h3 class="text-xl font-bold">5. Advance Analytics</h3></div>
+    </section>
+
+    <section id="content-display" class="content-area rounded-2xl hidden"></section>
+  </div>
+</body>
+</html>

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Medical Professional Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .card { transition: all 0.2s; }
+        .card:hover { transform: translateY(-1px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05); }
+        .history-entry { border-left: 4px solid; }
+        .h-range::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; background: #4f46e5; cursor: pointer; border-radius: 50%; }
+        .h-range::-moz-range-thumb { background: #4f46e5; }
+    </style>
+</head>
+<body>
+    <!-- Message/Alert Component -->
+    <div id="toast-message" class="fixed top-5 right-5 z-50 transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="text-white p-4 rounded-lg shadow-xl flex items-center space-x-3" id="toast-box">
+            <i class="fas fa-check-circle"></i>
+            <span id="toast-text"></span>
+        </div>
+    </div>
+
+    <!-- Login Overlay -->
+    <div id="login-screen" class="fixed inset-0 bg-gray-900 bg-opacity-80 flex justify-center items-center z-50">
+        <div class="bg-white p-10 rounded-xl shadow-2xl text-center w-80">
+            <h2 class="text-3xl font-extrabold text-indigo-700 mb-6">Local Chart Access</h2>
+            <input type="text" id="patientIdInput" placeholder="Enter Patient Chart ID" class="w-full p-3 mb-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">
+            <button id="enterBtn" class="w-full bg-indigo-600 text-white font-semibold py-3 rounded-lg hover:bg-indigo-700 transition duration-150">Load Patient Chart</button>
+            <p id="auth-status" class="mt-4 text-sm font-medium text-gray-500"><i class="fas fa-hdd mr-1 text-gray-400"></i> Data is stored locally in your browser.</p>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-10">
+        <div class="max-w-7xl mx-auto p-4 flex justify-between items-center">
+            <h1 class="text-3xl font-bold text-gray-800">
+                <i class="fas fa-notes-medical text-indigo-500 mr-2"></i> Clinical Dashboard
+            </h1>
+            <div class="flex items-center space-x-4">
+                <p id="currentPatientDisplay" class="font-medium text-gray-600 text-lg hidden">Patient ID: <span class="text-indigo-600 font-extrabold"></span></p>
+                <button id="nextPatientBtn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 transition duration-150 shadow-md">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Next Patient
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto p-6 lg:p-10 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Column 1: Patient Details and Mental Health Score -->
+        <div class="lg:col-span-1 space-y-6">
+            <!-- Patient Details -->
+            <section class="card bg-white p-6 rounded-xl shadow-lg border border-gray-100" id="details">
+                <h2 class="text-2xl font-bold text-indigo-700 mb-4"><i class="fas fa-user-check mr-2"></i> Patient Details</h2>
+                <form id="patientDetailsForm" class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="form-group"><label class="block text-sm font-medium text-gray-700">Name</label><input type="text" id="name" required class="w-full p-2 border border-gray-300 rounded-lg"></div>
+                        <div class="form-group"><label class="block text-sm font-medium text-gray-700">Age</label><input type="number" id="age" class="w-full p-2 border border-gray-300 rounded-lg"></div>
+                    </div>
+                    <div class="form-group"><label class="block text-sm font-medium text-gray-700">Gender</label>
+                        <select id="gender" class="w-full p-2 border border-gray-300 rounded-lg">
+                            <option value="">Select</option><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label class="block text-sm font-medium text-gray-700">Email (optional)</label><input type="email" id="email" class="w-full p-2 border border-gray-300 rounded-lg"></div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="form-group"><label class="block text-sm font-medium text-gray-700">Height (cm)</label><input type="number" id="height" class="w-full p-2 border border-gray-300 rounded-lg"></div>
+                        <div class="form-group"><label class="block text-sm font-medium text-gray-700">Weight (kg)</label><input type="number" id="weight" class="w-full p-2 border border-gray-300 rounded-lg"></div>
+                    </div>
+                    <button type="submit" class="w-full bg-green-500 text-white font-semibold py-2 rounded-lg hover:bg-green-600 transition duration-150 mt-4">
+                        <i class="fas fa-save mr-2"></i> Update Details (Local Save)
+                    </button>
+                </form>
+            </section>
+
+            <!-- Mental Health Score -->
+            <section class="card bg-white p-6 rounded-xl shadow-lg border border-gray-100" id="score">
+                <h2 class="text-2xl font-bold text-indigo-700 mb-4"><i class="fas fa-brain mr-2"></i> Mental Health Score</h2>
+                <input type="range" min="0" max="10" value="5" id="scoreRange" class="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer h-range">
+                <p class="text-xl mt-3 font-semibold text-center">Score: <span id="scoreValue" class="text-indigo-600 font-extrabold">5</span> / 10</p>
+            </section>
+        </div>
+
+        <!-- Column 2: Add Data -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Add data buttons -->
+            <section class="card bg-white p-6 rounded-xl shadow-lg border border-gray-100" id="add">
+                <h2 class="text-2xl font-bold text-indigo-700 mb-4"><i class="fas fa-plus-circle mr-2"></i> Add New Record</h2>
+                <div class="add-buttons grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <button id="addReport" class="bg-teal-500 text-white font-semibold py-3 rounded-lg hover:bg-teal-600 transition duration-150"><i class="fas fa-file-medical mr-1"></i> Report</button>
+                    <button id="addPrescription" class="bg-teal-500 text-white font-semibold py-3 rounded-lg hover:bg-teal-600 transition duration-150"><i class="fas fa-prescription-bottle-alt mr-1"></i> Prescription</button>
+                    <button id="addReason" class="bg-teal-500 text-white font-semibold py-3 rounded-lg hover:bg-teal-600 transition duration-150"><i class="fas fa-clipboard-question mr-1"></i> Reason for Visit</button>
+                    <button id="addBill" class="bg-teal-500 text-white font-semibold py-3 rounded-lg hover:bg-teal-600 transition duration-150"><i class="fas fa-money-bill-wave mr-1"></i> Bill/Payment</button>
+                </div>
+
+                <!-- Dynamic form container -->
+                <div id="formContainer" class="hidden mt-6 p-6 bg-indigo-50 rounded-xl border border-indigo-200 shadow-inner"></div>
+            </section>
+
+            <!-- Patient History -->
+            <section class="card bg-white p-6 rounded-xl shadow-lg border border-gray-100" id="history">
+                <h2 class="text-2xl font-bold text-indigo-700 mb-4"><i class="fas fa-history mr-2"></i> Patient History Timeline</h2>
+                <ul id="historyList" class="space-y-4">
+                    <li class="text-gray-500 italic">No history loaded. Enter a Patient Chart ID to begin.</li>
+                </ul>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Local Storage Logic -->
+<script>
+let currentPatientId = null;
+let patientData = null; // Holds the currently loaded patient object
+
+// --- DOM Elements ---
+const loginScreen = document.getElementById("login-screen");
+const patientIdInput = document.getElementById("patientIdInput");
+const enterBtn = document.getElementById("enterBtn");
+const nextPatientBtn = document.getElementById("nextPatientBtn");
+const patientDetailsForm = document.getElementById("patientDetailsForm");
+const historyList = document.getElementById("historyList");
+const scoreRange = document.getElementById("scoreRange");
+const scoreValue = document.getElementById("scoreValue");
+const formContainer = document.getElementById("formContainer");
+const currentPatientDisplay = document.getElementById("currentPatientDisplay");
+const toastBox = document.getElementById("toast-box");
+
+// --- Constants ---
+const STORAGE_PREFIX = 'medicalDashboard_patient_';
+const DEFAULT_PATIENT_DATA = {
+    details: { name: "New Patient", age: null, gender: "", email: "", height: null, weight: null },
+    history: [],
+    mentalHealthScore: 5
+};
+
+// --- UTILITY FUNCTIONS ---
+function showToast(message, isError = false) {
+    const toast = document.getElementById('toast-message');
+    const toastText = document.getElementById('toast-text');
+    toastText.textContent = message;
+
+    toast.className = 'fixed top-5 right-5 z-50 transition-opacity duration-300 opacity-0 pointer-events-none';
+    toastBox.className = 'text-white p-4 rounded-lg shadow-xl flex items-center space-x-3';
+
+    if (isError) {
+        toastBox.classList.add('bg-red-600');
+        toastBox.querySelector('i').className = 'fas fa-exclamation-triangle';
+    } else {
+        toastBox.classList.add('bg-indigo-600');
+        toastBox.querySelector('i').className = 'fas fa-check-circle';
+    }
+
+    setTimeout(() => { toast.classList.add('opacity-100', 'pointer-events-auto'); }, 50);
+    setTimeout(() => { toast.classList.remove('opacity-100', 'pointer-events-auto'); toast.classList.add('opacity-0'); }, 3000);
+}
+
+function formatBytes(bytes) {
+    if (!bytes) return "0 Bytes";
+    const k = 1024;
+    const sizes = ["Bytes", "KB", "MB", "GB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
+}
+
+// --- LOCAL STORAGE OPERATIONS (for files only) ---
+function getStorageKey(patientId) {
+    return STORAGE_PREFIX + patientId;
+}
+
+function saveFilesToLocalStorage() {
+    if (!currentPatientId || !patientData) return;
+    const filesOnly = patientData.history.filter(e => e.contentType === "file");
+    localStorage.setItem(getStorageKey(currentPatientId), JSON.stringify(filesOnly));
+}
+
+function loadFilesFromLocalStorage(patientId) {
+    const saved = localStorage.getItem(getStorageKey(patientId));
+    if (!saved) return [];
+    try { return JSON.parse(saved); }
+    catch(e) { return []; }
+}
+
+// --- BACKEND OPERATIONS ---
+async function loadPatientFromBackend(id) {
+    try {
+        const response = await fetch(`http://localhost:5000/api/patient/${id}`);
+        if (!response.ok) throw new Error("Patient not found in database");
+        const result = await response.json();
+        return result.data;
+    } catch(err) {
+        showToast(err.message, true);
+        return null;
+    }
+}
+
+async function savePatientToBackend() {
+    if (!currentPatientId || !patientData) return;
+    try {
+        const response = await fetch(`http://localhost:5000/api/patient/${currentPatientId}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(patientData)
+        });
+        const result = await response.json();
+        if (result.success) showToast("Patient data saved to database.");
+    } catch(err) {
+        console.error(err);
+        showToast("Error saving to database.", true);
+    }
+}
+
+// --- UI HELPERS ---
+function populateDetailsForm(details) {
+    if (!details) {
+        console.error("populateDetailsForm called with null/undefined details.");
+        return;
+    }
+    document.getElementById("name").value = details.name ?? "";
+    document.getElementById("age").value = details.age ?? "";
+    document.getElementById("gender").value = details.gender ?? "";
+    document.getElementById("email").value = details.email ?? "";
+    document.getElementById("height").value = details.height ?? "";
+    document.getElementById("weight").value = details.weight ?? "";
+}
+
+function clearDetailsForm() { patientDetailsForm.reset(); }
+
+function renderHistory(history) {
+    const filesFromLocal = loadFilesFromLocalStorage(currentPatientId);
+    const combinedHistory = [...history.filter(e => e.contentType !== "file"), ...filesFromLocal];
+    const sorted = combinedHistory.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+    
+    historyList.innerHTML = "";
+    if (sorted.length === 0) {
+        historyList.innerHTML = '<li class="text-gray-500 italic">No historical records found for this patient.</li>';
+        return;
+    }
+
+    sorted.forEach(entry => {
+        const li = document.createElement("li");
+        let contentText = entry.content;
+        let icon = 'fas fa-info-circle';
+        let color = 'border-indigo-400';
+
+        if (entry.type === "Report") { icon = 'fas fa-file-alt'; color = 'border-blue-500'; }
+        else if (entry.type === "Prescription") { icon = 'fas fa-pills'; color = 'border-green-500'; }
+        else if (entry.type === "Mental Health Score") { icon = 'fas fa-heartbeat'; color = 'border-purple-500'; }
+        else if (entry.type === "Reason for Visit") { icon = 'fas fa-clipboard-question'; color = 'border-yellow-500'; }
+        else if (entry.type === "Bill/Payment") { icon = 'fas fa-receipt'; color = 'border-teal-500'; }
+
+        if (entry.contentType === "file") {
+            contentText = `[File: ${entry.content}] (Size: ${formatBytes(entry.fileSize)})`;
+        }
+
+        li.className = `history-entry p-3 bg-white rounded-lg shadow-sm ${color}`;
+        li.innerHTML = `
+            <div class="flex justify-between items-center">
+                <span class="font-bold text-lg text-gray-800 flex items-center">
+                    <i class="${icon} mr-2 text-indigo-600"></i> ${entry.type}
+                </span>
+                <span class="text-xs text-gray-500">${entry.timestamp}</span>
+            </div>
+            <p class="mt-1 text-gray-700">${contentText}</p>
+        `;
+        historyList.appendChild(li);
+    });
+}
+
+function closePatientChart() {
+    currentPatientId = null;
+    patientData = null;
+    patientIdInput.value = "";
+    historyList.innerHTML = '<li class="text-gray-500 italic">No history loaded. Enter a Patient Chart ID to begin.</li>';
+    clearDetailsForm();
+    formContainer.classList.add("hidden");
+    formContainer.innerHTML = "";
+    currentPatientDisplay.classList.add("hidden");
+    loginScreen.style.display = "flex";
+    showToast("Patient chart closed.");
+}
+
+// --- MAIN LOGIC ---
+async function loadChart(id) {
+    const backendData = await loadPatientFromBackend(id);
+    if (!backendData) return;
+
+    patientData = backendData;
+    currentPatientId = id;
+
+    populateDetailsForm(patientData.details);
+    renderHistory(patientData.history);
+    scoreRange.value = patientData.mentalHealthScore;
+    scoreValue.textContent = patientData.mentalHealthScore;
+
+    currentPatientDisplay.querySelector('span').textContent = id;
+    currentPatientDisplay.classList.remove('hidden');
+    loginScreen.style.display = "none";
+    showToast(`Patient Chart ${id} loaded.`);
+}
+
+function addHistoryEntry(entry) {
+    if (!patientData) return;
+
+    const entryWithTimestamp = { ...entry, timestamp: new Date().toLocaleString(), id: crypto.randomUUID() };
+    patientData.history.push(entryWithTimestamp);
+
+    // Save files locally
+    if (entry.contentType === "file") saveFilesToLocalStorage();
+
+    savePatientToBackend();
+    renderHistory(patientData.history);
+    showToast(`${entry.type} recorded.`);
+}
+
+function showEntryForm(type) {
+    formContainer.innerHTML = `
+        <h3 class="text-xl font-bold text-indigo-700 mb-4">Add ${type}</h3>
+        <div class="space-y-4">
+            <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700">Upload file (optional)</label>
+                <input type="file" id="entryFile" class="w-full p-2 border border-gray-300 rounded-lg bg-white">
+            </div>
+            <div class="form-group">
+                <label class="block text-sm font-medium text-gray-700">Or enter text details</label>
+                <textarea id="entryText" rows="4" placeholder="Enter detailed ${type.toLowerCase()} notes here..." class="w-full p-2 border border-gray-300 rounded-lg"></textarea>
+            </div>
+        </div>
+        <div class="flex space-x-3 mt-5">
+            <button id="saveEntryBtn" class="flex-1 bg-indigo-500 text-white font-semibold py-2 rounded-lg hover:bg-indigo-600 transition duration-150">
+                <i class="fas fa-upload mr-2"></i> Save ${type}
+            </button>
+            <button class="flex-1 bg-gray-400 text-white font-semibold py-2 rounded-lg hover:bg-gray-500 transition duration-150" id="cancelEntryBtn">
+                <i class="fas fa-times-circle mr-2"></i> Cancel
+            </button>
+        </div>
+    `;
+    formContainer.classList.remove("hidden");
+
+    document.getElementById("cancelEntryBtn").addEventListener("click", () => {
+        formContainer.classList.add("hidden");
+        formContainer.innerHTML = "";
+    });
+
+    document.getElementById("saveEntryBtn").addEventListener("click", () => {
+        const fileInput = document.getElementById("entryFile");
+        const textInput = document.getElementById("entryText");
+        const file = fileInput.files[0];
+        const text = textInput.value.trim();
+
+        if (!currentPatientId) return showToast("No patient chart open.", true);
+
+        let entry = { type };
+        if (file) entry = { ...entry, contentType: "file", content: file.name, fileType: file.type, fileSize: file.size };
+        else if (text) entry = { ...entry, contentType: "text", content: text };
+        else return showToast("Please provide a file or text description.", true);
+
+        addHistoryEntry(entry);
+        formContainer.classList.add("hidden");
+        formContainer.innerHTML = "";
+    });
+}
+
+// --- EVENT LISTENERS ---
+document.addEventListener("DOMContentLoaded", () => {
+    const enterBtn = document.getElementById("enterBtn"); 
+    const patientIdInput = document.getElementById("patientIdInput");
+    enterBtn.addEventListener("click", () => {
+        const id = patientIdInput.value.trim();
+        if (!id) return showToast("Please enter a Patient Chart ID.", true);
+        loadChart(id);
+    });
+
+    nextPatientBtn.addEventListener("click", closePatientChart);
+
+    patientDetailsForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        if (!patientData) return showToast("No patient chart open.", true);
+
+        patientData.details = {
+            name: document.getElementById("name").value.trim(),
+            age: Number(document.getElementById("age").value) || null,
+            gender: document.getElementById("gender").value,
+            email: document.getElementById("email").value.trim(),
+            height: Number(document.getElementById("height").value) || null,
+            weight: Number(document.getElementById("weight").value) || null
+        };
+
+        saveFilesToLocalStorage();   // Save files
+        await savePatientToBackend(); // Save main data
+        showToast("Patient details saved.");
+    });
+
+    scoreRange.addEventListener("input", async (e) => {
+        const newScore = Number(e.target.value);
+        scoreValue.textContent = newScore;
+        if (!patientData) return;
+
+        patientData.mentalHealthScore = newScore;
+        addHistoryEntry({ type: "Mental Health Score", contentType: "text", content: `Score set to: ${newScore}/10` });
+    });
+
+    document.getElementById("addReport").addEventListener("click", () => { if (currentPatientId) showEntryForm("Report"); else showToast("Please load a patient chart first.", true); });
+    document.getElementById("addPrescription").addEventListener("click", () => { if (currentPatientId) showEntryForm("Prescription"); else showToast("Please load a patient chart first.", true); });
+    document.getElementById("addReason").addEventListener("click", () => { if (currentPatientId) showEntryForm("Reason for Visit"); else showToast("Please load a patient chart first.", true); });
+    document.getElementById("addBill").addEventListener("click", () => { if (currentPatientId) showEntryForm("Bill/Payment"); else showToast("Please load a patient chart first.", true); });
+});
+</script>
+
+</body>
+</html>
